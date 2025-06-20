@@ -12,17 +12,20 @@ import os
 import plotly.express as px
 from datetime import datetime
 
-# Set direktori lokal untuk nltk_data
-nltk_data_path = os.path.join(os.getcwd(), "nltk_data")
-nltk.data.path.append(nltk_data_path)
+# ===== BASE PATH SETUP =====
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "model")
+NLTK_DIR = os.path.join(BASE_DIR, "nltk_data")
 
+# ===== NLTK SETUP =====
+nltk.data.path.append(NLTK_DIR)
 try:
     stop_words = set(stopwords.words('indonesian'))
 except LookupError:
-    nltk.download('stopwords', download_dir=nltk_data_path)
+    nltk.download('stopwords', download_dir=NLTK_DIR)
     stop_words = set(stopwords.words('indonesian'))
 
-
+# ===== CLEANING FUNCTION =====
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'http\S+|www\S+', '', text)
@@ -31,25 +34,28 @@ def clean_text(text):
     tokens = [t for t in tokens if t not in stop_words]
     return ' '.join(tokens)
 
+# ===== LOAD MODEL + TOKENIZER =====
 @st.cache_resource
 def load_model_and_tokenizer():
-    model = tf.keras.models.load_model('model/lstm_model.h5')
-    with open('model/tokenizer.pkl', 'rb') as handle:
+    model_path = os.path.join(MODEL_DIR, 'lstm_model.h5')
+    tokenizer_path = os.path.join(MODEL_DIR, 'tokenizer.pkl')
+    label_path = os.path.join(MODEL_DIR, 'label_encoder.pkl')
+
+    model = tf.keras.models.load_model(model_path)
+
+    with open(tokenizer_path, 'rb') as handle:
         tokenizer = pickle.load(handle)
-    with open('model/label_encoder.pkl', 'rb') as handle:
+    with open(label_path, 'rb') as handle:
         le = pickle.load(handle)
+
     return model, tokenizer, le
 
-# Session states
-if 'review' not in st.session_state:
-    st.session_state.review = ""
-if 'history' not in st.session_state:
-    st.session_state.history = []
-if 'feedback' not in st.session_state:
-    st.session_state.feedback = None
-if 'reason' not in st.session_state:
-    st.session_state.reason = ""
+# ===== SESSION STATE =====
+for key in ['review', 'history', 'feedback', 'reason']:
+    if key not in st.session_state:
+        st.session_state[key] = "" if key != "history" else []
 
+# ===== SAMPLE REVIEWS =====
 sample_reviews = [
     "Aplikasi ini sangat membantu dalam mendalami Islam",
     "Sering crash saat buka doa harian",
@@ -58,15 +64,14 @@ sample_reviews = [
     "Bagus, tapi terlalu banyak iklan"
 ]
 
-# Sidebar info
+# ===== SIDEBAR =====
 st.sidebar.title("⚙️ Informasi")
 st.sidebar.markdown("""
 - Model: **LSTM**
 - Aplikasi: Analisis Sentimen MuslimPro
-- Aplikasi ini dibuat untuk analisis sentimen ulasan MuslimPro
 """)
 
-# CSS
+# ===== CSS =====
 st.markdown("""
     <style>
     .stTextArea textarea { border: 2px solid #007bff; border-radius: 8px; }
@@ -87,11 +92,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Judul
+# ===== JUDUL & INPUT =====
 st.title("🧠 Analisis Sentimen Ulasan MuslimPro")
 st.markdown("Masukkan ulasan aplikasi MuslimPro untuk mengetahui apakah ulasannya **positif**, **netral**, atau **negatif**.")
 
-# Input ulasan
 st.markdown("### ✍️ Masukkan atau pilih ulasan")
 col1, col2 = st.columns([4, 1])
 with col1:
@@ -105,13 +109,13 @@ with col2:
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Model
-if not os.path.exists('model'):
+# ===== LOAD MODEL =====
+if not os.path.exists(MODEL_DIR):
     st.error("Folder 'model' tidak ditemukan!")
 else:
     model, tokenizer, le = load_model_and_tokenizer()
 
-    # Prediksi tombol
+    # ===== PREDIKSI =====
     if st.button("🎯 Jalankan Prediksi"):
         review = st.session_state.review.strip()
         if not review:
@@ -138,7 +142,7 @@ else:
             st.session_state.reason = ""
             st.rerun()
 
-# Tampilkan hasil jika tersedia
+# ===== TAMPILKAN HASIL =====
 if 'last_result' in st.session_state:
     result = st.session_state.last_result
     emoji_map = {"positif": "😊", "netral": "😐", "negatif": "😠"}
@@ -151,7 +155,7 @@ if 'last_result' in st.session_state:
     st.write(f"**Tingkat Keyakinan:** {result['confidence']:.2%}")
     st.write(f"**Ulasan Anda:** {result['review']}")
 
-    # Feedback user
+    # ===== FEEDBACK =====
     st.markdown("**Apakah prediksi ini benar?**")
     fb_col1, fb_col2 = st.columns(2)
     with fb_col1:
@@ -162,14 +166,13 @@ if 'last_result' in st.session_state:
             st.session_state.feedback = "Salah"
             st.rerun()
 
+    save_feedback = False
     if st.session_state.feedback == "Salah":
         st.session_state.reason = st.text_input("📝 Alasan Anda (opsional):", key="reason_input")
         if st.button("📤 Kirim Feedback"):
             save_feedback = True
-        else:
-            save_feedback = False
-    else:
-        save_feedback = st.session_state.feedback == "Benar"
+    elif st.session_state.feedback == "Benar":
+        save_feedback = True
 
     if save_feedback:
         feedback_data = {
@@ -180,7 +183,7 @@ if 'last_result' in st.session_state:
             "Waktu": result["timestamp"]
         }
         feedback_df = pd.DataFrame([feedback_data])
-        feedback_file = "feedback.csv"
+        feedback_file = os.path.join(BASE_DIR, "feedback.csv")
         if os.path.exists(feedback_file):
             feedback_df.to_csv(feedback_file, mode='a', header=False, index=False)
         else:
@@ -191,14 +194,7 @@ if 'last_result' in st.session_state:
         st.session_state.feedback = None
         st.session_state.reason = ""
 
-
-# Riwayat
-if st.session_state.history:
-    st.subheader("📜 Riwayat Prediksi")
-    history_df = pd.DataFrame(st.session_state.history)
-    st.table(history_df)
-
-# Visualisasi distribusi contoh
+# ===== VISUALISASI =====
 st.subheader("📊 Distribusi Sentimen (Contoh Data)")
 distribusi = {"Positif": 60, "Netral": 25, "Negatif": 15}
 fig = px.pie(
