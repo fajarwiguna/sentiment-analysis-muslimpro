@@ -194,14 +194,3 @@ if 'last_result' in st.session_state:
         st.session_state.feedback = None
         st.session_state.reason = ""
 
-# ===== VISUALISASI =====
-st.subheader("📊 Distribusi Sentimen (Contoh Data)")
-distribusi = {"Positif": 60, "Netral": 25, "Negatif": 15}
-fig = px.pie(
-    values=list(distribusi.values()),
-    names=list(distribusi.keys()),
-    title="Distribusi Sentimen Ulasan MuslimPro",
-    color_discrete_map={"Positif": "#28a745", "Netral": "#ffc107", "Negatif": "#dc3545"}
-)
-fig.update_layout(width=500, height=400)
-st.plotly_chart(fig)
