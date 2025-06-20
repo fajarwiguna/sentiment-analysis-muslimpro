@@ -12,9 +12,16 @@ import os
 import plotly.express as px
 from datetime import datetime
 
-# Download stopwords
-nltk.download('stopwords')
-stop_words = set(stopwords.words('indonesian'))
+# Set direktori lokal untuk nltk_data
+nltk_data_path = os.path.join(os.getcwd(), "nltk_data")
+nltk.data.path.append(nltk_data_path)
+
+try:
+    stop_words = set(stopwords.words('indonesian'))
+except LookupError:
+    nltk.download('stopwords', download_dir=nltk_data_path)
+    stop_words = set(stopwords.words('indonesian'))
+
 
 def clean_text(text):
     text = text.lower()
