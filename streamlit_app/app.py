@@ -66,9 +66,21 @@ sample_reviews = [
 
 # ===== SIDEBAR =====
 st.sidebar.title("⚙️ Informasi")
+
+st.sidebar.markdown("### 📌 Tentang Aplikasi")
+st.sidebar.info(
+    "Aplikasi ini mendeteksi sentimen dari ulasan pengguna aplikasi MuslimPro "
+    "menggunakan model Machine Learning berbasis LSTM. "
+    "Output berupa kategori sentimen: **positif**, **netral**, atau **negatif**."
+)
+
+st.sidebar.markdown("---")  # Garis horizontal pemisah
+
+st.sidebar.markdown("### 🧠 Model yang Digunakan")
 st.sidebar.markdown("""
-- Model: **LSTM**
-- Aplikasi: Analisis Sentimen MuslimPro
+- Arsitektur: **LSTM (Long Short-Term Memory)**
+- Bahasa: **Indonesia**
+- Framework: **TensorFlow, Keras**
 """)
 
 # ===== CSS =====
